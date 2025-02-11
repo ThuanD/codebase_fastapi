@@ -1,0 +1,137 @@
+[project]
+name = "codebase-fastapi"
+version = "0.1.0"
+description = "A source codebase for FastAPI application"
+readme = "README.md"
+authors = [ { name = "kai", email = "thuan.dv0@gmail.com" } ]
+requires-python = ">=3.12"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "alembic>=1.14.1",
+  "asyncpg>=0.30",
+  "bcrypt==4.0.1",
+  "fastapi>=0.115.6",
+  "loguru>=0.7.3",
+  "passlib>=1.7.4",
+  "pydantic[email]>=2.10.5",
+  "pydantic-settings>=2.7.1",
+  "pytest>=8.3.4",
+  "python-jose>=3.3",
+  "python-multipart>=0.0.20",
+  "sqlalchemy>=2.0.37",
+  "uvicorn>=0.34",
+]
+
+[dependency-groups]
+dev = [
+  "aiosqlite>=0.21",
+  "coverage>=7.6.10",
+  "httpx>=0.28.1",
+  "pre-commit>=4.1",
+  "pytest>=8.3.4",
+  "pytest-asyncio>=0.25.3",
+  "pytest-cov>=6",
+  "ruff>=0.9.2",
+]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+indent-width = 4
+extend-exclude = [
+  "build",
+  "dist",
+  "docs",
+]
+
+format.indent-style = "space"
+format.quote-style = "double"
+format.line-ending = "auto"
+format.skip-magic-trailing-comma = false
+format.docstring-code-line-length = "dynamic"
+format.docstring-code-format = false
+# Set what ruff should check for.
+# See https://docs.astral.sh//ruff/rules/ for a list of rules.
+lint.select = [
+  "A",   # flake8-builtin errors
+  "ANN", # flake8-annotations errors
+  "ARG", # flake8-unused-arguments
+  "B",   # flake8-bugbear errors
+  "C4",  # flake8-comprehensions errors
+  "D",   # pydocstyle errors
+  "E",   # pycodestyle errors
+  "F",   # pyflakes errors
+  "G",   # flake8-logging-format
+  "I",   # import sorting
+  "INT", # flake8-gettext
+  "LOG", # flake8-logging
+  "N",   # pep8-naming
+  "PTH", # flake8-use-pathlib
+  "Q",   # flake8-quotes errors
+  "RET", # flake8-return
+  "RSE", # flake8-raise
+  "S",   # flake8-bandit errors
+  "SLF", # flake8-self
+  "T10", # flake8-debugger
+  "T20", # flake8-print errors
+  "TC",  # flake8-type-checking
+  "TD",  # flake8-todos
+  "UP",  # py-upgrade
+  "W",   # pycodestyle warnings
+]
+lint.ignore = [ "D100", "D104", "D203", "D213" ]
+lint.per-file-ignores."*/settings/*" = [ "F405" ]
+lint.per-file-ignores."tests/*" = [ "ANN201", "S101", "SLF001" ]
+# Allow unused variables when underscore-prefixed.
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+lint.isort.known-local-folder = [ "app" ]
+lint.isort.section-order = [
+  "future",
+  "standard-library",
+  "fastapi",
+  "third-party",
+  "first-party",
+  "local-folder",
+]
+# Group all FastAPI imports into a separate section.
+lint.isort.sections."fastapi" = [ "fastapi" ]
+
+[tool.coverage.run]
+source = [ "." ]
+branch = true
+omit = [
+  "*/migrations/*",
+  "app/settings/*",
+  "app/config.py",
+  "app/urls.py",
+]
+
+[tool.coverage.report]
+ignore_errors = true
+exclude_lines = [
+  # Don't complain about missing debug-only code:
+  "def __repr__",
+  "if self\\.debug",
+
+  # Don't complain if tests don't hit defensive assertion code:
+  "raise AssertionError",
+  "raise NotImplementedError",
+
+  # Don't complain if non-runnable code isn't run:
+  "if 0:",
+  "if __name__ == .__main__.:",
+
+  # Don't complain about abstract methods, they aren't run:
+  "@(abc\\.)?abstractmethod",
+
+  # Other
+  "pragma: no cover",
+  "pass",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
