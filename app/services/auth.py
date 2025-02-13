@@ -17,7 +17,7 @@ from app.services.users import UserService
 
 
 class AuthService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session) -> None:
         self.db = db
         self.user_service = UserService(db)
 
@@ -26,9 +26,9 @@ class AuthService:
 
         # Check if username or email already exists
         if self.user_service.get_by_email(email):
-            raise EmailAlreadyExistError()
+            raise EmailAlreadyExistError
         if self.user_service.get_by_username(register_data.username):
-            raise UsernameAlreadyExistError()
+            raise UsernameAlreadyExistError
 
         # Create user object from register data
         user = User(
@@ -52,9 +52,9 @@ class AuthService:
         user = self.user_service.authenticate(email=email, password=password)
 
         if not user:
-            raise UsernameOrPasswordIsIncorrectError()
+            raise UsernameOrPasswordIsIncorrectError
         if not user.is_active:
-            raise UserIsInactiveError()
+            raise UserIsInactiveError
 
         # Update last login
         user.last_login = datetime.now()

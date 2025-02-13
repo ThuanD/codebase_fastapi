@@ -40,12 +40,11 @@ def create_token(
     to_encode = {"exp": expire, "sub": str(subject), "type": token_type}
 
     try:
-        encoded_jwt = jwt.encode(
+        return jwt.encode(
             to_encode,
             settings.SECRET_KEY.get_secret_value(),
             algorithm=settings.SECURITY_ALGORITHM,
         )
-        return encoded_jwt
     except jwt.JWTError as e:
         raise InvalidTokenError(message=str(e))
 
@@ -80,10 +79,10 @@ def verify_token(token: str, token_type: str = "access") -> Optional[str]:
         if "exp" in decoded_token:
             now = timegm(datetime.now(UTC).utctimetuple())
             if decoded_token["exp"] <= now:
-                raise TokenExpiredError()
+                raise TokenExpiredError
 
         return decoded_token["sub"]
     except jwt.ExpiredSignatureError:
-        raise TokenExpiredError()
+        raise TokenExpiredError
     except (jwt.JWTError, ValidationError) as e:
         raise InvalidTokenError(message=str(e))

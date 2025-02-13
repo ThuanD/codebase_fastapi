@@ -22,8 +22,7 @@ async def register(
 ) -> User:
     """Register new user."""
     auth_service = AuthService(db)
-    user = auth_service.register(register_data)
-    return user
+    return auth_service.register(register_data)
 
 
 @router.post("/login", response_model=TokenResponse)

@@ -23,7 +23,7 @@ class InterceptHandler(logging.Handler):
 
 
 def setup_logging(logging_config: Dict[str, Any] = None) -> None:
-    """Configure logging with loguru"""
+    """Configure logging with loguru."""
     # Remove default logger
     logger.remove()
 

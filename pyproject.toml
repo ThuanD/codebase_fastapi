@@ -24,6 +24,7 @@ dependencies = [
   "python-multipart>=0.0.20",
   "sqlalchemy>=2.0.37",
   "uvicorn>=0.34",
+  "psycopg2-binary>=2.9.10",
 ]
 
 [dependency-groups]
@@ -85,7 +86,7 @@ lint.select = [
 ]
 lint.ignore = [ "D100", "D104", "D203", "D213" ]
 lint.per-file-ignores."*/settings/*" = [ "F405" ]
-lint.per-file-ignores."tests/*" = [ "ANN201", "S101", "SLF001" ]
+lint.per-file-ignores."tests/*" = [ "ANN001", "ANN201", "ARG001", "S101", "SLF001" ]
 # Allow unused variables when underscore-prefixed.
 lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 lint.isort.known-local-folder = [ "app" ]

@@ -27,7 +27,7 @@ def create_user(
     """Create new user with the following information:
     - **email**: unique email address
     - **username**: unique username
-    - **password**: strong password
+    - **password**: strong password.
     """
     user_service = UserService(db)
     return user_service.create(user_in)
@@ -60,7 +60,7 @@ def update_user_me(
     - **username**: new username
     - **password**: new password
     - **first_name**: first name
-    - **last_name**: last name
+    - **last_name**: last name.
     """
     user_service = UserService(db)
     return user_service.update(current_user.id, user_in)

@@ -7,7 +7,7 @@ migrate:
 	alembic upgrade head
 
 run:
-	uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
+	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 test:
 	pytest tests

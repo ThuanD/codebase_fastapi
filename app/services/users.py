@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Type
 
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,7 @@ class UserService:
         """Get user by ID."""
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise UserDoesNotExistError()
+            raise UserDoesNotExistError
         return user
 
     def get_by_email(self, email: str) -> Optional[User]:
@@ -33,7 +33,7 @@ class UserService:
     def create(self, user_in: UserCreate) -> User:
         """Create new user."""
         if self.get_by_email(user_in.email) or self.get_by_username(user_in.username):
-            raise UsernameOrEmailAlreadyExistError()
+            raise UsernameOrEmailAlreadyExistError
 
         user = User(
             email=user_in.email,
@@ -58,11 +58,11 @@ class UserService:
 
         if "email" in update_data and update_data["email"] != user.email:
             if self.get_by_email(update_data["email"]):
-                raise UsernameOrEmailAlreadyExistError()
+                raise UsernameOrEmailAlreadyExistError
 
         if "username" in update_data and update_data["username"] != user.username:
             if self.get_by_username(update_data["username"]):
-                raise UsernameOrEmailAlreadyExistError()
+                raise UsernameOrEmailAlreadyExistError
 
         for field, value in update_data.items():
             setattr(user, field, value)
@@ -81,10 +81,10 @@ class UserService:
         """Authenticate user."""
         user = self.get_by_email(email)
         if not user or not user.check_password(password):
-            raise UsernameOrPasswordIsIncorrectError()
+            raise UsernameOrPasswordIsIncorrectError
         return user
 
-    def get_multi(self, skip: int = 0, limit: int = 100) -> Tuple[list[User], int]:
+    def get_multi(self, skip: int = 0, limit: int = 100) -> Tuple[list[Type[User]], int]:
         """Get multiple users with pagination."""
         query = self.db.query(User)
         total = query.count()

@@ -28,7 +28,8 @@ class Settings(BaseSettings):
         description="Refresh token expiration in seconds",
     )
 
-    DATABASE_URL: str = Field("sqlite:///./sql_app.db", description="Database url")
+    DATABASE_URL: str = Field("postgresql://postgres:postgres@localhost:5432/app")
+    ASYNC_DATABASE_URL: str = Field("postgresql+asyncpg://postgres:postgres@localhost:5432/app")
 
     # Logging
     LOG_LEVEL: str = Field("INFO", description="Logging level")
