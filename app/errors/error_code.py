@@ -1,7 +1,6 @@
 class ErrorCode:
-    """Error code."""
+    """Error code constants."""
 
-    # General error
     INTERNAL_SERVER_ERROR_CODE = "E0000"
     INTERNAL_SERVER_ERROR_MESSAGE = "Internal server error."
 
@@ -26,7 +25,6 @@ class ErrorCode:
     RATE_LIMIT_EXCEEDED_CODE = "E0007"
     RATE_LIMIT_EXCEEDED_MESSAGE = "Rate limit exceeded."
 
-    # Execute error
     EMAIL_ALREADY_EXISTS_CODE = "E0100"
     EMAIL_ALREADY_EXISTS_MESSAGE = "Email already exists."
 
@@ -36,7 +34,7 @@ class ErrorCode:
     USERNAME_OR_EMAIL_ALREADY_EXISTS_CODE = "E0101"
     USERNAME_OR_EMAIL_ALREADY_EXISTS_MESSAGE = "Username or email already exists."
 
-    USERNAME_OR_PASSWORD_IS_INCORRECT_CODE = "E0102"  # noqa S105
+    USERNAME_OR_PASSWORD_IS_INCORRECT_CODE = "E0102"
     USERNAME_OR_PASSWORD_IS_INCORRECT_MESSAGE = "Username or password is incorrect."
 
     USER_DOES_NOT_EXIST_CODE = "E0103"
@@ -45,13 +43,11 @@ class ErrorCode:
     USER_IS_INACTIVE_CODE = "E0104"
     USER_IS_INACTIVE_MESSAGE = "User is inactive"
 
-    TOKEN_EXPIRED_CODE = "E0200"  # noqa S105
+    TOKEN_EXPIRED_CODE = "E0200"
     TOKEN_EXPIRED_MESSAGE = "Token has expired."
 
-    # Token errors
     INVALID_TOKEN_CODE = "E0201"
     INVALID_TOKEN_MESSAGE = "Invalid token."
 
-    # User role errors
     NOT_SUPERUSER_CODE = "E0301"
     NOT_SUPERUSER_MESSAGE = "User is not a superuser."

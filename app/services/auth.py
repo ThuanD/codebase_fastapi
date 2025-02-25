@@ -1,36 +1,39 @@
 from datetime import datetime
 
-from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy.orm import Session
-
+from app.core.constants import TokenType
 from app.core.security import create_token, verify_token
 from app.errors.exception import (
     EmailAlreadyExistError,
+    InvalidTokenError,
+    TokenExpiredError,
     UserIsInactiveError,
     UsernameAlreadyExistError,
     UsernameOrPasswordIsIncorrectError,
 )
 from app.models.user import User
-from app.schemas.auth import RegisterRequest, TokenResponse
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.services.users import UserService
 
 
 class AuthService:
-    def __init__(self, db: Session) -> None:
+    """Service for authentication operations."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize AuthService."""
         self.db = db
         self.user_service = UserService(db)
 
-    def register(self, register_data: RegisterRequest) -> User:
+    async def register(self, register_data: RegisterRequest) -> User:
+        """Register a new user."""
         email = str(register_data.email)
 
-        # Check if username or email already exists
-        if self.user_service.get_by_email(email):
+        if await self.user_service.get_by_email(email):
             raise EmailAlreadyExistError
-        if self.user_service.get_by_username(register_data.username):
+        if await self.user_service.get_by_username(register_data.username):
             raise UsernameAlreadyExistError
 
-        # Create user object from register data
         user = User(
             email=email,
             username=register_data.username,
@@ -41,55 +44,53 @@ class AuthService:
         )
         user.set_password(register_data.password)
 
-        # Save to database
         self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
+        await self.db.commit()
+        await self.db.refresh(user)
 
         return user
 
-    def login(self, email: str, password: str) -> TokenResponse:
-        user = self.user_service.authenticate(email=email, password=password)
+    async def login(self, login_data: LoginRequest) -> TokenResponse:
+        """Authenticate user and return tokens."""
+        email = str(login_data.email)
+        user = await self.user_service.authenticate(
+            email=email,
+            password=login_data.password,
+        )
 
         if not user:
             raise UsernameOrPasswordIsIncorrectError
         if not user.is_active:
             raise UserIsInactiveError
 
-        # Update last login
         user.last_login = datetime.now()
-        self.db.commit()
+        await self.db.commit()
 
         return TokenResponse(
-            access_token=create_token(user.id, "access"),
-            refresh_token=create_token(user.id, "refresh"),
+            access_token=create_token(user.id, TokenType.ACCESS_TOKEN),
+            refresh_token=create_token(user.id, TokenType.REFRESH_TOKEN),
         )
 
-    def refresh_token(self, refresh_token: str) -> TokenResponse:
-        user_id = verify_token(refresh_token, "refresh")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token",
-                headers={"WWW-Authenticate": "Bearer"},
+    async def refresh_token(self, refresh_token: str) -> TokenResponse:
+        """Refresh access token using refresh token."""
+        try:
+            user_id = verify_token(refresh_token, TokenType.REFRESH_TOKEN)
+            if not user_id:
+                raise InvalidTokenError
+
+            user = await self.user_service.get_by_id(user_id)
+            if not user or not user.is_active:
+                raise InvalidTokenError
+
+            return TokenResponse(
+                access_token=create_token(user.id, TokenType.ACCESS_TOKEN),
+                refresh_token=create_token(user.id, TokenType.REFRESH_TOKEN),
             )
+        except TokenExpiredError:
+            raise
+        except Exception as e:
+            raise InvalidTokenError from e
 
-        user = self.user_service.get_by_id(int(user_id))
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid user",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        return TokenResponse(
-            access_token=create_token(user.id, "access"),
-            refresh_token=create_token(user.id, "refresh"),
-        )
-
-    def logout(self, user):
-        # In a real application, you might want to:
-        # 1. Add the token to a blacklist
-        # 2. Clear any user sessions
-        # 3. Clear any cached user data
+    async def logout(self, _user: User) -> dict:
+        """Logout user."""
         return {"message": "Successfully logged out"}

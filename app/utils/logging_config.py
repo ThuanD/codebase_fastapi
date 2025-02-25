@@ -1,12 +1,17 @@
 import logging
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from loguru import logger
 
+from app.core.config import settings
+
 
 class InterceptHandler(logging.Handler):
+    """Intercept standard logging and redirect to loguru."""
+
     def emit(self, record: logging.LogRecord) -> None:
+        """Intercept and emit log record."""
         try:
             level = logger.level(record.levelname).name
         except ValueError:
@@ -14,7 +19,7 @@ class InterceptHandler(logging.Handler):
 
         frame, depth = logging.currentframe(), 2
         while frame.f_code.co_filename == logging.__file__:
-            frame = frame.f_back
+            frame = frame.f_back  # type: ignore
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(
@@ -22,27 +27,23 @@ class InterceptHandler(logging.Handler):
         )
 
 
-def setup_logging(logging_config: Dict[str, Any] = None) -> None:
+def setup_logging(_logging_config: Optional[Dict[str, Any]] = None) -> None:
     """Configure logging with loguru."""
-    # Remove default logger
     logger.remove()
 
-    # Add new handler with custom format
     logger.add(
         sys.stdout,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message} | {extra}",
-        level="INFO",
+        format=settings.LOG_FORMAT,
+        level=settings.LOG_LEVEL,
         serialize=True,
     )
 
-    # Add file handler for errors
     logger.add(
-        "logs/error.log",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+        "logs/app.log",
+        format=settings.LOG_FORMAT,
         level="ERROR",
         rotation="500 MB",
         retention="10 days",
     )
 
-    # Intercept standard logging
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)

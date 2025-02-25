@@ -1,58 +1,56 @@
 from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordRequestForm
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user, get_db
 from app.models.user import User
 from app.schemas.auth import (
+    LoginRequest,
     RefreshTokenRequest,
     RegisterRequest,
     RegisterResponse,
     TokenResponse,
 )
+from app.schemas.user import User as UserSchema
 from app.services.auth import AuthService
 
 router = APIRouter()
 
 
 @router.post("/register", response_model=RegisterResponse)
-async def register(
-    register_data: RegisterRequest, db: Session = Depends(get_db)
-) -> User:
-    """Register new user."""
+async def register(register_data: RegisterRequest,
+                   db: AsyncSession = Depends(get_db)) -> User:
+    """Register a new user."""
     auth_service = AuthService(db)
-    return auth_service.register(register_data)
+    return await auth_service.register(register_data)
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
-) -> TokenResponse:
+async def login(login_data: LoginRequest,
+                db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    """Login user and return access token."""
     auth_service = AuthService(db)
-    return auth_service.login(
-        email=form_data.username,  # OAuth2 form uses username field for email
-        password=form_data.password,
-    )
+    return await auth_service.login(login_data)
 
 
-@router.post("/refresh")
-async def refresh_token(
-    refresh_data: RefreshTokenRequest, db: Session = Depends(get_db)
-) -> TokenResponse:
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(refresh_data: RefreshTokenRequest,
+                        db: AsyncSession = Depends(get_db)) -> TokenResponse:
     """Refresh access token."""
     auth_service = AuthService(db)
-    return auth_service.refresh_token(refresh_token=refresh_data.refresh_token)
+    return await auth_service.refresh_token(refresh_data.refresh_token)
 
 
 @router.post("/logout")
-async def logout(
-    current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
-):
+async def logout(current_user: User = Depends(get_current_active_user),
+                 db: AsyncSession = Depends(get_db)) -> dict:
+    """Logout current user."""
     auth_service = AuthService(db)
-    return auth_service.logout(current_user)
+    return await auth_service.logout(current_user)
 
 
 @router.get("/me")
-async def read_users_me(current_user: User = Depends(get_current_active_user)):
+async def read_users_me(
+        current_user: User = Depends(get_current_active_user)) -> UserSchema:
+    """Get current user information."""
     return current_user

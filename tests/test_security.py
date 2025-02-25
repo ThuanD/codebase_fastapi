@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 import pytest
-from jose import jwt
+from jose import JWTError, jwt
 
 from app.core.config import settings
 from app.core.security import create_token, verify_token
@@ -34,9 +34,9 @@ def test_create_refresh_token():
 
 def test_verify_token_success():
     """Test successful token verification."""
-    token = create_token("test-subject")
+    token = create_token(123)
     subject = verify_token(token)
-    assert subject == "test-subject"
+    assert subject == 123
 
 
 def test_verify_token_expired():
@@ -53,6 +53,15 @@ def test_verify_token_invalid():
     """Test invalid token verification."""
     with pytest.raises(InvalidTokenError):
         verify_token("invalid-token")
+
+
+def test_create_token_jwt_error(monkeypatch):
+    """Test token creation with JWT encoding error."""
+    def mock_encode(*args, **kwargs):
+        raise JWTError("Encoding error")
+    monkeypatch.setattr(jwt, "encode", mock_encode)
+    with pytest.raises(InvalidTokenError):
+        create_token("test-subject")
 
 
 def test_verify_token_wrong_type():

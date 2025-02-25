@@ -6,11 +6,15 @@ T = TypeVar("T")
 
 
 class ResponseSchema(BaseModel):
+    """Base response schema."""
+
     code: str = "success"
     message: str = "Success"
 
 
 class DataResponse(ResponseSchema, Generic[T]):
+    """Schema for data response."""
+
     data: T | None = None
 
 

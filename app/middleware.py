@@ -10,15 +10,17 @@ from starlette.types import ASGIApp
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware for logging requests and responses."""
+
     def __init__(self, app: ASGIApp) -> None:
+        """Initialize the LoggingMiddleware."""
         super().__init__(app)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Dispatch the request and log details."""
         request_id = str(uuid.uuid4())
 
-        # Create context for request
         with logger.contextualize(request_id=request_id):
-            # Log request
             logger.info(
                 "Request",
                 extra={
@@ -35,7 +37,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 response = await call_next(request)
                 process_time = time.time() - start_time
 
-                # Log response
                 logger.info(
                     "Response",
                     extra={

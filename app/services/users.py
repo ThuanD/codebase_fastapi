@@ -1,55 +1,59 @@
-from typing import Optional, Tuple, Type
+from typing import Optional, Tuple
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors.exception import (
-    UserDoesNotExistError,
     UsernameOrEmailAlreadyExistError,
     UsernameOrPasswordIsIncorrectError,
+    UserNotFoundError,
 )
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 
 
 class UserService:
-    def __init__(self, db: Session) -> None:
+    """Service for user operations."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize UserService."""
         self.db = db
 
-    def get_by_id(self, user_id: int) -> User:
+    async def get_by_id(self, user_id: int) -> Optional[User]:
         """Get user by ID."""
-        user = self.db.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise UserDoesNotExistError
-        return user
+        result = await self.db.execute(select(User).filter(User.id == user_id))
+        return result.scalar_one_or_none()
 
-    def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> Optional[User]:
         """Get user by email."""
-        return self.db.query(User).filter(User.email == email).first()
+        result = await self.db.execute(select(User).filter(User.email == email))
+        return result.scalar_one_or_none()
 
-    def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> Optional[User]:
         """Get user by username."""
-        return self.db.query(User).filter(User.username == username).first()
+        result = await self.db.execute(select(User).filter(User.username == username))
+        return result.scalar_one_or_none()
 
-    def create(self, user_in: UserCreate) -> User:
-        """Create new user."""
-        if self.get_by_email(user_in.email) or self.get_by_username(user_in.username):
+    async def create(self, user_in: UserCreate) -> User:
+        """Create a new user."""
+        if await self.get_by_email(str(user_in.email)):
+            raise UsernameOrEmailAlreadyExistError
+        if await self.get_by_username(user_in.username):
             raise UsernameOrEmailAlreadyExistError
 
-        user = User(
-            email=user_in.email,
-            username=user_in.username,
-            is_active=True,
-        )
+        user = User(**user_in.model_dump(exclude={"password"}))
         user.set_password(user_in.password)
 
         self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
+        await self.db.commit()
+        await self.db.refresh(user)
         return user
 
-    def update(self, user_id: int, user_in: UserUpdate) -> User:
+    async def update(self, user_id: int, user_in: UserUpdate) -> User:
         """Update user information."""
-        user = self.get_by_id(user_id)
+        user = await self.get_by_id(user_id)
+        if not user:
+            raise UserNotFoundError
 
         update_data = user_in.model_dump(exclude_unset=True)
 
@@ -57,36 +61,42 @@ class UserService:
             user.set_password(update_data.pop("password"))
 
         if "email" in update_data and update_data["email"] != user.email:
-            if self.get_by_email(update_data["email"]):
+            if await self.get_by_email(update_data["email"]):
                 raise UsernameOrEmailAlreadyExistError
 
         if "username" in update_data and update_data["username"] != user.username:
-            if self.get_by_username(update_data["username"]):
+            if await self.get_by_username(update_data["username"]):
                 raise UsernameOrEmailAlreadyExistError
 
         for field, value in update_data.items():
             setattr(user, field, value)
 
-        self.db.commit()
-        self.db.refresh(user)
+        await self.db.commit()
+        await self.db.refresh(user)
         return user
 
-    def delete(self, user_id: int) -> None:
+    async def delete(self, user_id: int) -> None:
         """Delete user."""
-        user = self.get_by_id(user_id)
-        self.db.delete(user)
-        self.db.commit()
+        user = await self.get_by_id(user_id)
+        if not user:
+            raise UserNotFoundError
 
-    def authenticate(self, email: str, password: str) -> User:
+        await self.db.delete(user)
+        await self.db.commit()
+
+    async def authenticate(self, email: str, password: str) -> Optional[User]:
         """Authenticate user."""
-        user = self.get_by_email(email)
+        user = await self.get_by_email(email)
         if not user or not user.check_password(password):
             raise UsernameOrPasswordIsIncorrectError
         return user
 
-    def get_multi(self, skip: int = 0, limit: int = 100) -> Tuple[list[Type[User]], int]:
+    async def get_multi(self, skip: int = 0, limit: int = 100) -> Tuple[
+        list[User], int]:
         """Get multiple users with pagination."""
-        query = self.db.query(User)
-        total = query.count()
-        users = query.offset(skip).limit(limit).all()
-        return users, total
+        query = select(User).offset(skip).limit(limit)
+        result = await self.db.execute(query)
+        users = result.scalars().all()
+        total = await self.db.execute(select(func.count(User.id)))
+        total_count = total.scalar()
+        return list(users), total_count

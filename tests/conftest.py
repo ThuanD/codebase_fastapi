@@ -1,10 +1,9 @@
 from datetime import datetime
-from typing import Dict, Generator
+from typing import AsyncGenerator
 
-from fastapi.testclient import TestClient
-
-import pytest
-from sqlalchemy import create_engine
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.api.deps import get_db
@@ -13,119 +12,111 @@ from app.db.base import Base
 from app.main import app
 from app.models.user import User
 
-# Use in-memory SQLite for tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+# Create async engine
+engine = create_async_engine(
+    SQLALCHEMY_DATABASE_URL,
+    echo=True,
+    future=True,
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create async session factory
+AsyncSessionLocal = sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
-@pytest.fixture(scope="function")
-def db() -> Generator:
+@pytest_asyncio.fixture(scope="function")
+async def async_db() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database for each test."""
-    Base.metadata.drop_all(bind=engine)  # Clean up before test
-    Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
-    db = TestingSessionLocal()
+    async_session = AsyncSessionLocal()
     try:
-        yield db
+        yield async_session
     finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)  # Clean up after test
+        await async_session.close()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
-def client(db) -> Generator:
-    """Create a new FastAPI TestClient that uses the `db` fixture to override
-    the `get_db` dependency that is injected into routes.
-    """
+@pytest_asyncio.fixture
+async def client(async_db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create a new FastAPI TestClient that uses the `db` fixture."""
 
-    def override_get_db():
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         try:
-            yield db
+            yield async_db
         finally:
-            db.close()
+            await async_db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
-        yield c
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def normal_user(db: TestingSessionLocal) -> User:
+@pytest_asyncio.fixture
+async def normal_user(async_db: AsyncSession) -> User:
     """Create a normal user for testing."""
-    try:
-        db.rollback()  # Reset any failed transaction
-        user = User(
-            email="user@example.com",
-            username="testuser",
-            is_active=True,
-            is_superuser=False,
-            date_joined=datetime.now(),
-        )
-        user.set_password("testpass123")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
-    except Exception:
-        db.rollback()
-        raise
+    user = User(
+        email="user@example.com",
+        username="testuser",
+        is_active=True,
+        is_superuser=False,
+        date_joined=datetime.now(),
+    )
+    user.set_password("testpass123")
+    async_db.add(user)
+    await async_db.commit()
+    await async_db.refresh(user)
+    return user
 
 
-@pytest.fixture
-def superuser(db: TestingSessionLocal) -> User:
+@pytest_asyncio.fixture
+async def superuser(async_db: AsyncSession) -> User:
     """Create a superuser for testing."""
-    try:
-        db.rollback()  # Reset any failed transaction
-        user = User(
-            email="admin@example.com",
-            username="admin",
-            is_active=True,
-            is_superuser=True,
-            date_joined=datetime.now(),
-        )
-        user.set_password("adminpass123")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
-    except Exception:
-        db.rollback()
-        raise
+    user = User(
+        email="admin@example.com",
+        username="admin",
+        is_active=True,
+        is_superuser=True,
+        date_joined=datetime.now(),
+    )
+    user.set_password("adminpass123")
+    async_db.add(user)
+    await async_db.commit()
+    await async_db.refresh(user)
+    return user
 
 
-@pytest.fixture
-def inactive_user(db: TestingSessionLocal) -> User:
+@pytest_asyncio.fixture
+async def inactive_user(async_db: AsyncSession) -> User:
     """Create an inactive user for testing."""
-    try:
-        db.rollback()  # Reset any failed transaction
-        user = User(
-            email="inactive@example.com",
-            username="inactive",
-            is_active=False,
-            date_joined=datetime.now(),
-        )
-        user.set_password("inactive123")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
-    except Exception:
-        db.rollback()
-        raise
+    user = User(
+        email="inactive@example.com",
+        username="inactive",
+        is_active=False,
+        date_joined=datetime.now(),
+    )
+    user.set_password("inactive123")
+    async_db.add(user)
+    await async_db.commit()
+    await async_db.refresh(user)
+    return user
 
 
-@pytest.fixture
-def normal_user_token_headers(normal_user: User) -> Dict[str, str]:
+@pytest_asyncio.fixture
+async def normal_user_token_headers(normal_user: User) -> dict[str, str]:
     """Return authorization headers for normal user."""
     return {"Authorization": f"Bearer {create_token(str(normal_user.id))}"}
 
 
-@pytest.fixture
-def superuser_token_headers(superuser: User) -> Dict[str, str]:
+@pytest_asyncio.fixture
+async def superuser_token_headers(superuser: User) -> dict[str, str]:
     """Return authorization headers for superuser."""
     return {"Authorization": f"Bearer {create_token(str(superuser.id))}"}

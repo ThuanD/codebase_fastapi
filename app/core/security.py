@@ -1,18 +1,17 @@
-from calendar import timegm
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
-from jose import jwt
-from pydantic import ValidationError
+from jose import JWTError, jwt
 
 from app.core.config import settings
+from app.core.constants import TokenType
 from app.errors.exception import InvalidTokenError, TokenExpiredError
 
 
 def create_token(
-    subject: Union[str, Any],
-    token_type: str = "access",
-    expires_delta: Optional[timedelta] = None,
+        subject: Union[int, str],
+        token_type: str = TokenType.ACCESS_TOKEN,
+        expires_delta: Optional[timedelta] = None,
 ) -> str:
     """Create JWT token.
 
@@ -24,18 +23,18 @@ def create_token(
     Returns:
         Encoded JWT token as string
 
+    Raises:
+        InvalidTokenError: If token creation fails
+
     """
     if expires_delta:
-        expire = datetime.now() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        if token_type == "access":
-            expire = datetime.now() + timedelta(
-                seconds=settings.ACCESS_TOKEN_EXPIRE_SECONDS
-            )
-        else:  # refresh token
-            expire = datetime.now() + timedelta(
-                seconds=settings.REFRESH_TOKEN_EXPIRE_SECONDS
-            )
+        expire = datetime.now(UTC) + (
+            timedelta(seconds=settings.ACCESS_TOKEN_EXPIRE_SECONDS)
+            if token_type == TokenType.ACCESS_TOKEN
+            else timedelta(seconds=settings.REFRESH_TOKEN_EXPIRE_SECONDS)
+        )
 
     to_encode = {"exp": expire, "sub": str(subject), "type": token_type}
 
@@ -45,19 +44,20 @@ def create_token(
             settings.SECRET_KEY.get_secret_value(),
             algorithm=settings.SECURITY_ALGORITHM,
         )
-    except jwt.JWTError as e:
-        raise InvalidTokenError(message=str(e))
+    except JWTError as e:
+        raise InvalidTokenError(message=str(e)) from e
 
 
-def verify_token(token: str, token_type: str = "access") -> Optional[str]:
-    """Verify JWT token.
+def verify_token(
+        token: str, token_type: str = TokenType.ACCESS_TOKEN) -> Union[int | str]:
+    """Verify JWT token and return user ID.
 
     Args:
-        token: Token to verify
-        token_type: Expected token type ("access" or "refresh")
+        token: JWT token to verify
+        token_type: Type of token ("access" or "refresh")
 
     Returns:
-        Subject from token if valid, None otherwise
+        User ID if token is valid
 
     Raises:
         TokenExpiredError: If token has expired
@@ -65,24 +65,20 @@ def verify_token(token: str, token_type: str = "access") -> Optional[str]:
 
     """
     try:
-        decoded_token = jwt.decode(
+        payload = jwt.decode(
             token,
             settings.SECRET_KEY.get_secret_value(),
             algorithms=[settings.SECURITY_ALGORITHM],
         )
-        # Check token type first
-        if decoded_token["type"] != token_type:
-            raise InvalidTokenError(
-                message=f"Invalid token type. Expected {token_type}"
-            )
-        # Check expiration
-        if "exp" in decoded_token:
-            now = timegm(datetime.now(UTC).utctimetuple())
-            if decoded_token["exp"] <= now:
-                raise TokenExpiredError
+        if payload.get("type") != token_type:
+            raise InvalidTokenError("Invalid token type")
 
-        return decoded_token["sub"]
-    except jwt.ExpiredSignatureError:
-        raise TokenExpiredError
-    except (jwt.JWTError, ValidationError) as e:
-        raise InvalidTokenError(message=str(e))
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise InvalidTokenError("Token missing user ID")
+
+        return int(user_id)
+    except jwt.ExpiredSignatureError as e:
+        raise TokenExpiredError from e
+    except JWTError as e:
+        raise InvalidTokenError(message=str(e)) from e

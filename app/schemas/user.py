@@ -2,48 +2,64 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing_extensions import Annotated
 
 
 class UserLoginSchema(BaseModel):
+    """Schema for user login."""
+
     email: str
     username: str
 
 
 class UserBase(BaseModel):
-    """Base User Schema."""
+    """Base schema for user."""
 
-    email: EmailStr = Field(..., description="User email address")
-    username: str = Field(..., min_length=3, max_length=50, description="Username")
-    first_name: Optional[str] = Field(None, max_length=150, description="First name")
-    last_name: Optional[str] = Field(None, max_length=150, description="Last name")
+    model_config = ConfigDict(from_attributes=True)
+    email: EmailStr = Field(..., description="User email")
+    username: str = Field(..., description="Username")
+    first_name: str = Field(default="", description="First name")
+    last_name: str = Field(default="", description="Last name")
+    is_active: bool = Field(default=True, description="Whether the user is active")
+    is_superuser: bool = Field(default=False,
+                               description="Whether the user is a superuser")
+    date_joined: datetime = Field(..., description="Date user joined")
+    last_login: Optional[datetime] = Field(None, description="Last login datetime")
 
 
 class UserCreate(UserBase):
-    """Schema for creating user."""
+    """Schema for creating a user."""
 
-    password: str = Field(..., min_length=8, description="User password")
+    password: Annotated[str, Field(..., min_length=8, max_length=128)]
 
 
 class UserUpdate(BaseModel):
-    """Schema for updating user."""
-
-    email: Optional[EmailStr] = Field(None, description="New email address")
-    username: Optional[str] = Field(
-        None, min_length=3, max_length=50, description="New username"
-    )
-    password: Optional[str] = Field(None, min_length=8, description="New password")
-    first_name: Optional[str] = Field(None, max_length=150, description="First name")
-    last_name: Optional[str] = Field(None, max_length=150, description="Last name")
-
-
-class User(UserBase):
-    """Schema for user response."""
+    """Schema for updating a user."""
 
     model_config = ConfigDict(from_attributes=True)
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class UserInDBBase(UserBase):
+    """Base schema for user in database."""
 
     id: int = Field(..., description="User ID")
-    is_active: bool = Field(..., description="Whether the user is active")
-    is_superuser: bool = Field(..., description="Whether the user is superuser")
-    created_at: datetime
-    updated_at: datetime
-    last_login: Optional[datetime] = None
+    created_at: datetime = Field(..., description="Creation datetime")
+    updated_at: datetime = Field(..., description="Last update datetime")
+
+
+class User(UserInDBBase):
+    """Schema for user response."""
+
+    pass
+
+
+class UserInDB(UserInDBBase):
+    """Schema for user in database with hashed password."""
+
+    password: str = Field(..., description="Hashed password")

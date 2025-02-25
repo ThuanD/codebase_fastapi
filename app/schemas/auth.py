@@ -1,50 +1,65 @@
-import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from typing_extensions import Annotated
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    """Schema for login request."""
+
+    email: EmailStr = Field(..., description="User email")
+    password: Annotated[str, Field(..., min_length=8, max_length=128)]
 
 
 class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
+    """Schema for token response."""
+
+    model_config = ConfigDict(from_attributes=True)
+    access_token: str = Field(..., description="JWT access token")
+    refresh_token: str = Field(..., description="JWT refresh token")
+    token_type: str = Field(default="bearer", description="Token type")
 
 
 class TokenPayload(BaseModel):
+    """Schema for token payload."""
+
     sub: str
     exp: int
     type: str
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    """Schema for refresh token request."""
+
+    refresh_token: str = Field(..., description="JWT refresh token")
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
-    username: str
-    password: str
-    first_name: str | None = None
-    last_name: str | None = None
+    """Schema for user registration request."""
 
-    @field_validator("email")
-    def email_validation(cls, v):
-        if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
-            raise ValueError("Invalid email format")
+    email: EmailStr = Field(..., description="User email")
+    username: Annotated[str, Field(..., min_length=3, max_length=150)]
+    password: Annotated[str, Field(..., min_length=8, max_length=128)]
+    first_name: Annotated[str, Field(default="", max_length=150)]
+    last_name: Annotated[str, Field(default="", max_length=150)]
+
+    @field_validator("username")
+    @classmethod
+    def username_alphanumeric(cls, v: str) -> str:
+        """Validate username is alphanumeric."""
+        if not v.isalnum():
+            raise ValueError("Username must be alphanumeric")
         return v
 
 
 class RegisterResponse(BaseModel):
+    """Schema for user registration response."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
+    email: EmailStr
     username: str
-    first_name: str | None
-    last_name: str | None
-    email: str
-    date_joined: datetime
+    first_name: str
+    last_name: str
     is_active: bool
+    date_joined: datetime
