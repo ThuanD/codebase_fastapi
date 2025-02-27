@@ -10,6 +10,7 @@ from app.api import router
 from app.core.config import settings
 from app.errors.exception import BaseError
 from app.errors.exception_hanlder import http_exception_handler
+from app.middleware import LoggingMiddleware
 from app.utils.logging_config import setup_logging
 
 
@@ -35,6 +36,9 @@ def get_application() -> FastAPI:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         lifespan=lifespan,
     )
+
+    # Add Logging Middleware
+    application.add_middleware(LoggingMiddleware)
 
     # Set CORS middleware
     if settings.ALLOW_ORIGINS:

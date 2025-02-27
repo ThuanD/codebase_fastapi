@@ -9,6 +9,12 @@ from app.core.security import create_token
 from app.errors.error_code import ErrorCode
 from app.models.user import User
 
+API_REGISTER_ENDPOINT = "/api/v1/auth/register"
+API_LOGIN_ENDPOINT = "/api/v1/auth/login"
+API_LOGOUT_ENDPOINT = "/api/v1/auth/logout"
+API_REFRESH_TOKEN_ENDPOINT = "/api/v1/auth/refresh"
+API_ME_ENDPOINT = "/api/v1/auth/me"
+
 
 @pytest.mark.asyncio
 async def test_register(client: AsyncClient):
@@ -16,11 +22,11 @@ async def test_register(client: AsyncClient):
     register_data = {
         "email": "newuser@example.com",
         "username": "newuser",
-        "password": "newpass123",
+        "password": "newpass123",  # NOSONAR
         "first_name": "New",
         "last_name": "User",
     }
-    response = await client.post("/api/v1/auth/register", json=register_data)
+    response = await client.post(API_REGISTER_ENDPOINT, json=register_data)
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["email"] == register_data["email"]
@@ -32,20 +38,20 @@ async def test_register_invalid_username(client: AsyncClient):
     """Test registration with non-alphanumeric username."""
     register_data = {
         "email": "newuser2@example.com",
-        "username": "new user!",  # Không alphanumeric
-        "password": "newpass123",
+        "username": "new user!",
+        "password": "newpass123",  # NOSONAR
         "first_name": "New",
         "last_name": "User",
     }
-    response = await client.post("/api/v1/auth/register", json=register_data)
+    response = await client.post(API_REGISTER_ENDPOINT, json=register_data)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.asyncio
 async def test_login(client: AsyncClient, normal_user: User):
     """Test successful login."""
-    login_data = {"email": normal_user.email, "password": "testpass123"}
-    response = await client.post("/api/v1/auth/login", json=login_data)
+    login_data = {"email": normal_user.email, "password": "testpass123"}  # NOSONAR
+    response = await client.post(API_LOGIN_ENDPOINT, json=login_data)
     assert response.status_code == status.HTTP_200_OK
     tokens = response.json()
     assert "access_token" in tokens
@@ -55,8 +61,7 @@ async def test_login(client: AsyncClient, normal_user: User):
 @pytest.mark.asyncio
 async def test_logout(client: AsyncClient, normal_user_token_headers: dict):
     """Test user logout."""
-    response = await client.post("/api/v1/auth/logout",
-                                 headers=normal_user_token_headers)
+    response = await client.post(API_LOGOUT_ENDPOINT, headers=normal_user_token_headers)
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["message"] == "Successfully logged out"
@@ -64,10 +69,10 @@ async def test_logout(client: AsyncClient, normal_user_token_headers: dict):
 
 @pytest.mark.asyncio
 async def test_get_me(
-        client: AsyncClient, normal_user: User, normal_user_token_headers: dict
+    client: AsyncClient, normal_user: User, normal_user_token_headers: dict
 ):
     """Test getting current user info."""
-    response = await client.get("/api/v1/auth/me", headers=normal_user_token_headers)
+    response = await client.get(API_ME_ENDPOINT, headers=normal_user_token_headers)
     assert response.status_code == status.HTTP_200_OK
     user_data = response.json()
     assert user_data["email"] == normal_user.email
@@ -78,7 +83,7 @@ async def test_get_me(
 async def test_get_me_invalid_token(client: AsyncClient):
     """Test getting user info with invalid token."""
     headers = {"Authorization": "Bearer invalid_token"}
-    response = await client.get("/api/v1/auth/me", headers=headers)
+    response = await client.get(API_ME_ENDPOINT, headers=headers)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     data = response.json()
     assert data["code"] == ErrorCode.INVALID_TOKEN_CODE
@@ -87,10 +92,11 @@ async def test_get_me_invalid_token(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_me_expired_token(client: AsyncClient, normal_user: User):
     """Test getting user info with expired token."""
-    expired_token = create_token(str(normal_user.id), "access",
-                                 expires_delta=timedelta(days=-1))
+    expired_token = create_token(
+        str(normal_user.id), "access", expires_delta=timedelta(days=-1)
+    )
     headers = {"Authorization": f"Bearer {expired_token}"}
-    response = await client.get("/api/v1/auth/me", headers=headers)
+    response = await client.get(API_ME_ENDPOINT, headers=headers)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     data = response.json()
     assert data["code"] == ErrorCode.TOKEN_EXPIRED_CODE
@@ -100,7 +106,7 @@ async def test_get_me_expired_token(client: AsyncClient, normal_user: User):
 async def test_get_me_inactive_user(client: AsyncClient, inactive_user: User):
     """Test getting user info with inactive user."""
     headers = {"Authorization": f"Bearer {create_token(str(inactive_user.id))}"}
-    response = await client.get("/api/v1/auth/me", headers=headers)
+    response = await client.get(API_ME_ENDPOINT, headers=headers)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     data = response.json()
     assert data["code"] == ErrorCode.USER_IS_INACTIVE_CODE
@@ -109,16 +115,16 @@ async def test_get_me_inactive_user(client: AsyncClient, inactive_user: User):
 @pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient, normal_user: User):
     """Test login with wrong password."""
-    login_data = {"email": normal_user.email, "password": "wrongpass"}
-    response = await client.post("/api/v1/auth/login", json=login_data)
+    login_data = {"email": normal_user.email, "password": "wrongpass"}  # NOSONAR
+    response = await client.post(API_LOGIN_ENDPOINT, json=login_data)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.asyncio
 async def test_login_inactive_user(client: AsyncClient, inactive_user: User):
     """Test login with inactive user."""
-    login_data = {"email": inactive_user.email, "password": "inactive123"}
-    response = await client.post("/api/v1/auth/login", json=login_data)
+    login_data = {"email": inactive_user.email, "password": "inactive123"}  # NOSONAR
+    response = await client.post(API_LOGIN_ENDPOINT, json=login_data)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -127,7 +133,7 @@ async def test_refresh_token_success(client: AsyncClient, normal_user: User):
     """Test successful token refresh."""
     refresh_token = create_token(str(normal_user.id), "refresh")
     response = await client.post(
-        "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+        API_REFRESH_TOKEN_ENDPOINT, json={"refresh_token": refresh_token}
     )
     assert response.status_code == status.HTTP_200_OK
     tokens = response.json()
@@ -142,7 +148,7 @@ async def test_refresh_token_expired(client: AsyncClient, normal_user: User):
         str(normal_user.id), "refresh", expires_delta=timedelta(days=-10)
     )
     response = await client.post(
-        "/api/v1/auth/refresh", json={"refresh_token": expired_token}
+        API_REFRESH_TOKEN_ENDPOINT, json={"refresh_token": expired_token}
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     data = response.json()

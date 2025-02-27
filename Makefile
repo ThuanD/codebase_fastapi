@@ -13,6 +13,9 @@ test:
 	pytest tests
 
 coverage:
+	pytest --cov=. --cov-report=xml:coverage.xml
+
+coverage-html:
 	pytest --cov=app --cov-report=term-missing --cov-report=html --cov-report=xml
 
 lint:
@@ -26,6 +29,9 @@ format:
 
 format-check:
 	ruff format . --check
+
+scan:
+	./scan.sh
 
 hooks:
 	pre-commit run --all-files

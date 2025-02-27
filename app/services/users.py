@@ -91,8 +91,9 @@ class UserService:
             raise UsernameOrPasswordIsIncorrectError
         return user
 
-    async def get_multi(self, skip: int = 0, limit: int = 100) -> Tuple[
-        list[User], int]:
+    async def get_multi(
+        self, skip: int = 0, limit: int = 100
+    ) -> Tuple[list[User], int]:
         """Get multiple users with pagination."""
         query = select(User).offset(skip).limit(limit)
         result = await self.db.execute(query)

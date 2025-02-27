@@ -29,7 +29,9 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str = Field("postgresql://postgres:postgres@localhost:5432/app")
-    ASYNC_DATABASE_URL: str = Field("postgresql+asyncpg://postgres:postgres@localhost:5432/app")
+    ASYNC_DATABASE_URL: str = Field(
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/app"
+    )
 
     # Logging
     LOG_LEVEL: str = Field("INFO", description="Logging level")

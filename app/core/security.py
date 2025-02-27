@@ -9,9 +9,9 @@ from app.errors.exception import InvalidTokenError, TokenExpiredError
 
 
 def create_token(
-        subject: Union[int, str],
-        token_type: str = TokenType.ACCESS_TOKEN,
-        expires_delta: Optional[timedelta] = None,
+    subject: Union[int, str],
+    token_type: str = TokenType.ACCESS_TOKEN,
+    expires_delta: Optional[timedelta] = None,
 ) -> str:
     """Create JWT token.
 
@@ -49,7 +49,8 @@ def create_token(
 
 
 def verify_token(
-        token: str, token_type: str = TokenType.ACCESS_TOKEN) -> Union[int | str]:
+    token: str, token_type: str = TokenType.ACCESS_TOKEN
+) -> Union[int | str]:
     """Verify JWT token and return user ID.
 
     Args:
@@ -74,7 +75,7 @@ def verify_token(
             raise InvalidTokenError("Invalid token type")
 
         user_id = payload.get("sub")
-        if user_id is None:
+        if not user_id:
             raise InvalidTokenError("Token missing user ID")
 
         return int(user_id)

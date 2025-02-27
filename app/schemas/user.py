@@ -21,8 +21,9 @@ class UserBase(BaseModel):
     first_name: str = Field(default="", description="First name")
     last_name: str = Field(default="", description="Last name")
     is_active: bool = Field(default=True, description="Whether the user is active")
-    is_superuser: bool = Field(default=False,
-                               description="Whether the user is a superuser")
+    is_superuser: bool = Field(
+        default=False, description="Whether the user is a superuser"
+    )
     date_joined: datetime = Field(..., description="Date user joined")
     last_login: Optional[datetime] = Field(None, description="Last login datetime")
 

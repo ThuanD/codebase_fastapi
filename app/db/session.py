@@ -1,3 +1,5 @@
+from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -16,7 +18,7 @@ AsyncSessionLocal = sessionmaker(
 )
 
 
-async def get_async_session() -> AsyncSession:
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Get an async database session."""
     async with AsyncSessionLocal() as session:
         try:

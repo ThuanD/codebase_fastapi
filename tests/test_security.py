@@ -49,6 +49,13 @@ def test_verify_token_expired():
         pass
 
 
+def test_verify_token_none():
+    """Test invalid token verification."""
+    token = create_token("")
+    with pytest.raises(InvalidTokenError):
+        verify_token(token)
+
+
 def test_verify_token_invalid():
     """Test invalid token verification."""
     with pytest.raises(InvalidTokenError):
@@ -57,8 +64,10 @@ def test_verify_token_invalid():
 
 def test_create_token_jwt_error(monkeypatch):
     """Test token creation with JWT encoding error."""
+
     def mock_encode(*args, **kwargs):
         raise JWTError("Encoding error")
+
     monkeypatch.setattr(jwt, "encode", mock_encode)
     with pytest.raises(InvalidTokenError):
         create_token("test-subject")

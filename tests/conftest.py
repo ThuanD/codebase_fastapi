@@ -22,9 +22,7 @@ engine = create_async_engine(
 )
 
 # Create async session factory
-AsyncSessionLocal = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -55,7 +53,9 @@ async def client(async_db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides[get_db] = override_get_db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=transport, base_url="http://test"  ## NOSONAR
+    ) as ac:
         yield ac
     app.dependency_overrides.clear()
 
@@ -120,3 +120,9 @@ async def normal_user_token_headers(normal_user: User) -> dict[str, str]:
 async def superuser_token_headers(superuser: User) -> dict[str, str]:
     """Return authorization headers for superuser."""
     return {"Authorization": f"Bearer {create_token(str(superuser.id))}"}
+
+
+@pytest_asyncio.fixture
+async def nonexistent_user_token_headers() -> dict[str, str]:
+    """Return authorization headers for nonexistent user."""
+    return {"Authorization": f"Bearer {create_token(12345689)}"}
